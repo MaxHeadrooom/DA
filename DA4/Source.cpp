@@ -1,232 +1,583 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <math.h>
 #include <algorithm>
+#include <set>
 #include <map>
+#include <sstream>
+#include <fstream>
+#include <chrono>
 
 using ll = long long;
 
-std::vector<ll> z_func(const std::vector<std::string>& s)
+using std::cin;
+using std::cout;
+
+class Node
 {
-    ll n = static_cast<ll>(s.size());
-    std::vector<ll> z(n, 0);
-    ll l = 0, r = 0;
-    for (int i = 1; i < n; i++)
+public:
+    std::pair<std::string, unsigned long long> data;
+    Node* left;
+    Node* right;
+    Node* parent;
+    char color;
+
+    Node(const std::pair<std::string, unsigned long long>& s)
     {
-        if (i <= r)
-            z[i] = std::min(z[i - l], r - i + 1);
-        while (i + z[i] < n and (s[n - z[i] - 1] == s[n - 1 - (i + z[i])]))
+        left = nullptr;
+        right = nullptr;
+        parent = nullptr;
+        data = s;
+        color = 'r';
+    }
+};
+
+class RB_tree
+{
+private:
+    void rotateLeft(Node* node)
+    {
+        Node* child = node->right;
+
+        node->right = child->left;
+
+        if (child->left != nullptr)
         {
-            z[i]++;
+            child->left->parent = node;
         }
-        if (i + z[i] - 1 > r)
+
+        child->parent = node->parent;
+
+        if (node->parent == nullptr)
         {
-            l = i;
-            r = i + z[i] - 1;
+            root = child;
         }
-    }
-    return z;
-}
 
-void BadCharacter(const std::vector<std::string>& pattern, std::map<std::string, ll>& badchar)
-{
-    for (int i = 0; i < static_cast<ll>(pattern.size()); i++)
-    {
-        badchar[pattern[i]] = i;
-    }
-}
-
-std::vector<ll> goodSuffix(const std::vector<std::string>& pats)
-{
-    std::vector<ll> Nj = z_func(pats);
-    std::reverse(Nj.begin(), Nj.end());
-
-    std::vector<ll> Li(static_cast<ll>(pats.size()) + 1, static_cast<ll>(pats.size()));
-
-    int j = 0;
-    for (int i = 0; i < static_cast<ll>(pats.size()) - 1; i++)
-    {
-        j = static_cast<ll>(pats.size()) - Nj[i];
-        Li[j] = i;
-    }
-
-    std::vector<ll> l(static_cast<ll>(pats.size()) + 1, static_cast<ll>(pats.size()));
-    for (int i = static_cast<ll>(pats.size()) - 1; i >= 0; i--)
-    {
-        j = static_cast<ll>(pats.size()) - i;
-        if (Nj[j - 1] == j)
+        else if (node == node->parent->left)
         {
-            l[i] = (j - 1);
+            node->parent->left = child;
         }
         else
         {
-            l[i] = l[i + 1];
+            node->parent->right = child;
         }
+
+        child->left = node;
+
+        node->parent = child;
     }
 
-    for (int i = 0; i < static_cast<ll>(pats.size()) + 1; i++)
+    void rotateRight(Node* node)
     {
-        if (Li[i] == static_cast<ll>(pats.size()))
+        Node* child = node->left;
+
+        node->left = child->right;
+
+        if (child->right != nullptr)
         {
-            Li[i] = l[i];
+            child->right->parent = node;
         }
-    }
 
-    for (int i = 0; i < static_cast<ll>(Li.size()); i++)
-    {
-        if (Li[i] != static_cast<ll>(pats.size()))
+        child->parent = node->parent;
+
+        if (node->parent == nullptr)
         {
-            Li[i] = static_cast<ll>(pats.size()) - Li[i] - 1;
+            root = child;
         }
-    }
 
-    return Li;
-}
-
-void Input(std::vector<std::string>& pattern, std::vector<std::string>& text, std::vector<std::pair<ll, ll>>& positions)
-{
-    std::string word = "";
-    char c;
-    c = getchar();
-    bool flag = false;
-    ll linePos = 1;
-    ll columnPos = 0;
-    std::pair<ll, ll> pos;
-
-    while (c != '\n')
-    {
-        if (c == ' ' and flag)
+        else if (node == node->parent->right)
         {
-            flag = false;
-            pattern.push_back(word);
-            word = "";
+            node->parent->right = child;
         }
         else
         {
-            if (c != ' ')
+            node->parent->left = child;
+        }
+
+        child->right = node;
+
+        node->parent = child;
+    }
+
+    Node* seek(const std::pair<std::string, unsigned long long>& str, Node* root)
+    {
+        if (root == nullptr)
+        {
+            return nullptr;
+        }
+
+        if (str.first < root->data.first)
+        {
+            if (root->left != nullptr)
+                return seek(str, root->left);
+        }
+        else
+        {
+            if (str.first > root->data.first)
             {
-                flag = true;
-                word += std::tolower(c);
+                if (root->right != nullptr)
+                    return seek(str, root->right);
             }
+            else
+                return root;
         }
-        c = getchar();
+
+        return nullptr;
     }
 
-    if (flag)
+    void fix(Node* node)
     {
-        pattern.push_back(word);
-    }
-
-    word = "";
-    flag = false;
-
-    while ((c = getchar()) != EOF and c != '#')
-    {
-        if (c == ' ' and flag)
+        if (node->parent == nullptr)
         {
-            flag = false;
-            columnPos++;
-            text.push_back(word);
-            pos.first = linePos;
-            pos.second = columnPos;
-            positions.push_back(pos);
-            word = "";
+            node->color = 'b';
+            return;
         }
-        else
+
+        Node* parent = node->parent;
+
+        if (parent->color == 'b')
         {
-            if (c == '\n')
+            return;
+        }
+
+        Node* grandparent = parent->parent;
+
+        if (grandparent == nullptr)
+        {
+            return;
+        }
+
+        if (parent == grandparent->left)
+        {
+            Node* dyadya_bili = grandparent->right;
+
+            if (dyadya_bili != nullptr and dyadya_bili->color == 'r')
             {
-                if (flag)
-                {
-                    columnPos++;
-                    text.push_back(word);
-                    pos.first = linePos;
-                    pos.second = columnPos;
-                    positions.push_back(pos);
-                    word = "";
-                }
-                flag = false;
-                columnPos = 0;
-                linePos++;
+                parent->color = 'b';
+                dyadya_bili->color = 'b';
+                grandparent->color = 'r';
+
+                fix(grandparent);
             }
             else
             {
-                if (c != ' ')
+                if (node == parent->right)
                 {
-                    flag = true;
-                    word += std::tolower(c);
+                    node = parent;
+                    rotateLeft(node);
+                    parent = node->parent;
                 }
+
+                parent->color = 'b';
+                grandparent->color = 'r';
+                rotateRight(grandparent);
+            }
+        }
+        else
+        {
+            Node* dyadya_bili = grandparent->left;
+
+            if (dyadya_bili != nullptr and dyadya_bili->color == 'r')
+            {
+                parent->color = 'b';
+                dyadya_bili->color = 'b';
+                grandparent->color = 'r';
+                fix(grandparent);
+            }
+            else
+            {
+                if (node == parent->left)
+                {
+                    node = parent;
+                    rotateRight(node);
+                    parent = node->parent;
+                }
+
+                parent->color = 'b';
+                grandparent->color = 'r';
+                rotateLeft(grandparent);
             }
         }
     }
 
-    if (flag)
+    void fix_delete(Node* target)
     {
-        columnPos++;
-        text.push_back(word);
-        pos.first = linePos;
-        pos.second = columnPos;
-        positions.push_back(pos);
+        while (target != root and target->color == 'b')
+        {
+            Node* parent = target->parent;
+            if (parent->left == target)
+            {
+                Node* brother = parent->right;
+                if (brother and brother->color == 'r')
+                {
+                    brother->color = 'b';
+                    parent->color = 'r';
+                    rotateLeft(parent);
+                    brother = parent->right;
+                }
+                if ((!brother->left or brother->left->color == 'b') and (!brother->right or brother->right->color == 'b'))
+                {
+                    brother->color = 'r';
+                    target = parent;
+                }
+                else
+                {
+                    if (!brother->right or brother->right->color == 'b')
+                    {
+                        brother->left->color = 'b';
+                        brother->color = 'r';
+                        rotateRight(brother);
+                        brother = parent->right;
+                    }
+                    brother->color = parent->color;
+                    parent->color = 'b';
+                    brother->right->color = 'b';
+                    rotateLeft(parent);
+                    target = root;
+                }
+            }
+            else
+            {
+                Node* brother = parent->left;
+                if (brother and brother->color == 'r')
+                {
+                    brother->color = 'b';
+                    parent->color = 'r';
+                    rotateRight(parent);
+                    brother = parent->left;
+                }
+                if ((!brother->right or brother->right->color == 'b') and (!brother->left or brother->left->color == 'b'))
+                {
+                    brother->color = 'r';
+                    target = parent;
+                }
+                else {
+                    if (!brother->left or brother->left->color == 'b')
+                    {
+                        brother->right->color = 'b';
+                        brother->color = 'r';
+                        rotateLeft(brother);
+                        brother = parent->left;
+                    }
+                    brother->color = parent->color;
+                    parent->color = 'b';
+                    brother->left->color = 'b';
+                    rotateRight(parent);
+                    target = root;
+                }
+            }
+        }
+        target->color = 'b';
+    }
+
+
+public:
+
+    void insert(const std::pair<std::string, unsigned long long>& str)
+    {
+        Node* node = new Node(str);
+        Node* parent = nullptr;
+        Node* cur = root;
+
+        if (root == nullptr)
+        {
+            root = node;
+            fix(node);
+            return;
+        }
+
+        while (cur != nullptr)
+        {
+            parent = cur;
+            if (str.first < cur->data.first)
+            {
+                cur = cur->left;
+            }
+            else
+            {
+                cur = cur->right;
+            }
+        }
+
+        node->parent = parent;
+
+        if (parent == nullptr)
+        {
+            root = cur;
+        }
+        else
+        {
+            if (parent->data > str)
+                parent->left = node;
+            else
+                parent->right = node;
+        }
+
+        fix(node);
+    }
+
+    Node* seeker(const std::pair<std::string, unsigned long long>& str)
+    {
+        Node* node = seek(str, root);
+
+        return node;
+    }
+
+    void del(const std::pair<std::string, unsigned long long>& str)
+    {
+        Node* node = seeker(str);
+
+        return erase(node);
+    }
+
+    void erase(Node* node)
+    {
+        if (node->left and node->right)
+        {
+            Node* sin = node->right;
+            while (sin->left)
+            {
+                sin = sin->left;
+            }
+            node->data = sin->data;
+            erase(sin);
+            return;
+        }
+        Node* parent = node->parent;
+        Node*& target_edge = (!parent) ? root : (parent->left == node) ? parent->left : parent->right;
+        fix_delete(node);
+        if (node->right)
+        {
+            target_edge = node->right;
+            node->right->parent = parent;
+        }
+        else if (node->left)
+        {
+            target_edge = node->left;
+            node->left->parent = parent;
+        }
+        else
+        {
+            if (!parent)
+            {
+                root = nullptr;
+            }
+            else
+            {
+                target_edge = nullptr;
+            }
+        }
+        node->left = node->right = nullptr;
+        delete node;
+    }
+
+    void Save(std::ostream& file, Node* node)
+    {
+        if (node == nullptr)
+        {
+            return;
+        }
+        int keySize = (node->data.first).size();
+        file.write((char*)&keySize, sizeof(int));
+        file.write((char*)node->data.first.c_str(), keySize);
+        file.write((char*)&(node->data.second), sizeof(unsigned long long));
+        file.write((char*)&node->color, sizeof(char));
+
+        bool hasLeft = (node->left != nullptr);
+        bool hasRight = (node->right != nullptr);
+
+        file.write((char*)&hasLeft, sizeof(bool));
+        file.write((char*)&hasRight, sizeof(bool));
+
+        if (hasLeft)
+        {
+            Save(file, node->left);
+        }
+        if (hasRight)
+        {
+            Save(file, node->right);
+        }
+    }
+
+    Node* Load(std::istream& file)
+    {
+        int keysize;
+        file.read((char*)&keysize, sizeof(int));
+
+        if (file.gcount() == 0 or keysize == 0)
+        {
+            return nullptr;
+        }
+
+        char* key = new char[keysize + 1];
+        key[keysize] = '\0';
+        file.read(key, keysize);
+        std::string keyString(key);
+        delete[] key;
+
+        unsigned long long value;
+        file.read((char*)&value, sizeof(unsigned long long));
+
+        char color;
+        file.read((char*)&color, sizeof(char));
+
+        bool hasLeft = false;
+        bool hasRight = false;
+        file.read((char*)&hasLeft, sizeof(bool));
+        file.read((char*)&hasRight, sizeof(bool));
+
+        Node* node = new Node(std::make_pair(keyString, value));
+        node->color = color;
+
+        if (hasLeft)
+        {
+            node->left = Load(file);
+            if (node->left)
+                node->left->parent = node;
+        }
+        if (hasRight)
+        {
+            node->right = Load(file);
+            if (node->right)
+                node->right->parent = node;
+        }
+
+        return node;
+    }
+
+    void clearHelper(Node* node)
+    {
+        if (node != nullptr)
+        {
+            clearHelper(node->left);
+            clearHelper(node->right);
+            delete node;
+        }
+    }
+
+    void clear()
+    {
+        clearHelper(root);
+        root = nullptr;
+    }
+
+    Node* root = nullptr;
+
+};
+
+void lower(std::string& str)
+{
+    for (char& c : str)
+    {
+        c = tolower(c);
     }
 }
 
 int main()
 {
+
+    cin.tie(NULL);
+    cout.tie(NULL);
     std::ios_base::sync_with_stdio(false);
-    std::cin.tie(nullptr);
-    std::cout.tie(nullptr);
 
-    std::vector<std::string> pat;
-    std::vector<std::string> text;
-    std::vector<std::pair<ll, ll>> positions;
-    Input(pat, text, positions);
+    auto start = std::chrono::high_resolution_clock::now();
 
-    if (pat.size() > text.size())
+    RB_tree tree;
+
+    std::string s, s1;
+    unsigned long long s2;
+
+    std::pair<std::string, unsigned long long> m;
+
+    std::ofstream ofstr;
+    std::ifstream ifstr;
+
+    std::ifstream f("1e5.txt");
+
+    while (cin >> s)
     {
-        exit(0);
-    }
-
-
-    std::map<std::string, ll> badchar;
-    BadCharacter(pat, badchar);
-
-    std::vector<ll> goodsuff(static_cast<ll>(pat.size()), 0);
-    goodsuff = goodSuffix(pat);
-
-    ll patternPos, bound = 0, shift = 0, textPos = 0;
-
-    while (textPos < static_cast<ll>(text.size()) - static_cast<ll>(pat.size()) + 1)
-    {
-        for (patternPos = static_cast<ll>(pat.size()) - 1; patternPos >= bound; patternPos--)
+        lower(s);
+        if (s[0] != '+' and s[0] != '-' and s[0] != '!')
         {
-            if (pat[patternPos] != text[textPos + patternPos])
+            Node* nod = tree.seeker(std::make_pair(s, 0ULL));
+            if (nod != nullptr)
             {
-                break;
+                cout << "OK: " << nod->data.second << '\n';
+            }
+            else
+            {
+                cout << "NoSuchWord" << '\n';
             }
         }
-
-        if (patternPos < bound)
-        {
-            std::cout << positions[textPos].first << ", " << positions[textPos].second << '\n';
-            bound = static_cast<ll>(pat.size()) - goodsuff[0];
-            patternPos = -1;
-        }
         else
         {
-            bound = 0;
-        }
+            if (s == "!")
+            {
+                cin >> s1;
 
-        if (patternPos < bound)
-        {
-            shift = goodsuff[patternPos + 1];
-        }
-        else
-        {
-            shift = std::max({ goodsuff[patternPos + 1], patternPos - badchar[text[textPos + patternPos]], 1ll });
-        }
+                std::string file;
 
-        textPos += shift;
+                cin >> file;
+
+                if (s1 == "Save")
+                {
+                    ofstr.open(file, std::ios::out | std::ios::binary);
+                    tree.Save(ofstr, tree.root);
+                    cout << "OK" << '\n';
+                }
+                else
+                {
+                    tree.clear();
+                    ifstr.open(file, std::ios::in | std::ios::binary);
+                    tree.root = tree.Load(ifstr);
+                    cout << "OK" << '\n';
+                }
+            }
+            else
+            {
+                cin >> s1;
+                lower(s1);
+
+                if (s[0] == '+')
+                {
+                    cin >> s2;
+
+                    std::pair<std::string, unsigned long long> pa;
+                    pa = std::make_pair(s1, s2);
+
+                    if (tree.seeker(pa) == nullptr)
+                    {
+                        tree.insert(pa);
+                        cout << "OK" << '\n';
+                    }
+                    else
+                    {
+                        cout << "Exist" << '\n';
+                    }
+                }
+                else
+                {
+                    if (s[0] == '-')
+                    {
+                        if (tree.seeker(std::make_pair(s1, 0ULL)) != nullptr)
+                        {
+                            tree.del(std::make_pair(s1, 0ULL));
+                            cout << "OK" << '\n';
+                        }
+                        else
+                        {
+                            cout << "NoSuchWord" << '\n';
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    return 0;
+    auto end = std::chrono::high_resolution_clock::now();
+
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    //cout << duration.count() << '\n';
 }
